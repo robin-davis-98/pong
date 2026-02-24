@@ -20,6 +20,14 @@ const char* fragmentShaderSource = R"(
     }
 )";
 
+const char* backgroundFragSource = R"(
+    #version 330 core
+    out vec4 FragColor;
+    void main() {
+        FragColor = vec4(0.0f, 1.0f, 0.0f, 1.0f);
+    }
+)";
+
 int main()
 {
     if (!SDL_Init(SDL_INIT_VIDEO))
@@ -69,10 +77,20 @@ int main()
     glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
     glCompileShader(fragmentShader);
 
+    GLuint backgroundFragShader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(backgroundFragShader, 1, &backgroundFragSource, NULL);
+    glCompileShader(backgroundFragShader);
+
     GLuint shaderProgram = glCreateProgram();
     glAttachShader(shaderProgram, vertexShader);
     glAttachShader(shaderProgram, fragmentShader);
     glLinkProgram(shaderProgram);
+
+
+    GLuint backgroundShader = glCreateProgram();
+    glAttachShader(backgroundShader, vertexShader);
+    glAttachShader(backgroundShader, backgroundFragShader);
+    glLinkProgram(backgroundShader);
 
     float vertices[] = {
         -0.05f,  0.2f, 0.0f,
@@ -80,9 +98,30 @@ int main()
          0.05f, -0.2f, 0.0f,
 
         -0.05f,  0.2f, 0.0f,
-         0.05f,  0.2f, 0.0f,
+         0.05f,  -0.2f, 0.0f,
         -0.05f, -0.2f, 0.0f,
     };
+
+    float background[] = {
+        -1.0f,  1.0f, 0.0f,
+         1.0f,  1.0f, 0.0f,
+         1.0f, -1.0f, 0.0f,
+
+        -1.0f,  1.0f, 0.0f,
+         1.0f, -1.0f, 0.0f,
+        -1.0f, -1.0f, 0.0f,
+    };
+
+    GLuint backgroundArray, backgroundBuffer;
+    glGenVertexArrays(1, &backgroundArray);
+    glGenBuffers(1, &backgroundBuffer);
+
+    glBindVertexArray(backgroundArray);
+    glBindBuffer(GL_ARRAY_BUFFER, backgroundBuffer);
+    glBufferData(GL_ARRAY_BUFFER,sizeof(background), background, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
 
     GLuint VAO, VBO;
     glGenVertexArrays(1, &VAO);
@@ -108,8 +147,16 @@ int main()
             }
         }
 
-        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        uint8_t r = 50;
+        uint8_t g = 50;
+        uint8_t b = 45;
+
+        glClearColor(((float)r/255.0f), ((float)g/255.0f), ((float)b/255.0f), 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
+
+        glUseProgram(backgroundShader);
+        glBindVertexArray(backgroundArray);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
 
         glUseProgram(shaderProgram);
         glBindVertexArray(VAO);
