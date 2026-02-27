@@ -1,7 +1,3 @@
-//
-// Created by robin on 25/2/26.
-//
-
 #include <cstdio>
 #include <SDL3/SDL_init.h>
 

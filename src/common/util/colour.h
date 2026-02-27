@@ -1,5 +1,5 @@
-#ifndef PONG_COLOUR_H
-#define PONG_COLOUR_H
+#ifndef PET_COLOUR_H
+#define PET_COLOUR_H
 #include <cassert>
 #include <cstdint>
 #include <cstdlib>
@@ -7,55 +7,30 @@
 
 struct Colour
 {
-    uint8_t r, g, b, a;
+    float r, g, b, a;
 };
 
 inline Colour colour_from_rbga(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
 {
-    return {r, g, b, a};
+    return { r / 255.0f, g / 255.0f, b / 255.0f, a / 255.0f };
 }
 
 inline Colour colour_from_rgb(uint8_t r, uint8_t g, uint8_t b)
 {
-    return {r, g, b, 255};
+    return colour_from_rbga(r, g, b, 255);
 }
-
 inline Colour colour_from_hex(const char* hex)
 {
-    /**
-     * @desc Takes a hex string in the format of "#RRGGBB"
-    */
-    assert(hex != nullptr);
-    assert(hex[0] == '#');
-    assert(hex[7] == '\0');
+    assert(hex != nullptr && hex[0] == '#' && strlen(hex) == 7);
 
-    uint64_t value = strtoul(hex + 1, nullptr, 16);
+    uint32_t value = (uint32_t)strtoul(hex + 1, nullptr, 16);
 
-    return (Colour){
-        .r = (uint8_t)((value >> 16) & 0xFF),
-        .g = (uint8_t)((value >> 8) & 0xFF),
-        .b = (uint8_t)(value & 0xFF),
-        .a = 255
-    };
-}
-
-inline Colour colour_from_hex_alpha(const char* hex)
-{
-    /**
-     * @desc Takes a hex string in the format of "#RRGGBBAA"s
-     */
-    assert(hex != nullptr);
-    assert(hex[0] == '#');
-    assert(hex[9] == '\0');
-
-    uint64_t value = strtoul(hex + 1, nullptr, 16);
-
-    return (Colour){
-        .r = (uint8_t)((value >> 24) & 0xFF),
-        .g = (uint8_t)((value >> 16) & 0xFF),
-        .b = (uint8_t)((value >> 8) & 0xFF),
-        .a = (uint8_t)(value & 0xFF),
-    };
+    return colour_from_rbga(
+        (value >> 16) & 0xFF,
+        (value >> 8) & 0xFF,
+        (value & 0xFF),
+        255
+    );
 }
 
 #endif

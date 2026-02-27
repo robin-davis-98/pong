@@ -1,100 +1,79 @@
 #include <stdio.h>
 
 #include <SDL3/SDL.h>
-#include <glad/glad.h>
 
+#include "core/app.h"
 #include "core/graphics/renderer/renderer.h"
 #include "core/graphics/window/window.h"
+#include "core/scene/camera/orthographic.h"
 
-struct player_pos {
-    float x, y;
-};
 
-struct target
+void setup_Game(App* app, const Window* window)
 {
-    float x, y;
-};
+    int32_t w, h;
+    SDL_GetWindowSize(window->window_handle, &w, &h);
 
-void run(bool& running, Window& window, Renderer& renderer, RenderFunctions& gfx)
-{
-    SDL_Event e;
-    player_pos current_pos = { 0.0f, 0.0f };
-    target target_pos = {
-        0.0f, 0.0f
-    };
+    app->game.camera = {};
+    app->game.camera.position = { 0.0f, 0.0f };
+    app->game.camera.zoom = 1.0f;
+    app->game.camera.aspect_ratio = (float)w / (float)h;
+    camera_UpdateOrtho(&app->game.camera);
 
-    float lerp_speed = 5.0f;
-
-    uint64_t last_time = SDL_GetTicks();
-
-    int w, h;
-    SDL_GetWindowSize(window.window_handle, &w, &h);
-
-    while (running)
-    {
-        uint64_t now = SDL_GetTicks();
-        float dt = (now - last_time) / 1000.0f; // Convert milliseconds to seconds
-        last_time = now;
-
-        while (SDL_PollEvent(&e))
-        {
-            if (e.type == SDL_EVENT_QUIT)
-            {
-                running = false;
-            } else if (e.type == SDL_EVENT_WINDOW_RESIZED)
-            {
-                gfx.on_resize(&renderer, e.window.data1, e.window.data2);
-                w = e.window.data1;
-                h = e.window.data2;
-            } else if (e.type == SDL_EVENT_MOUSE_BUTTON_DOWN)
-            {
-                // Update the TARGET, not the current position
-                target_pos.x = (e.button.x / (float)w) * 2.0f - 1.0f;
-                target_pos.y = 1.0f - (e.button.y / (float)h) * 2.0f;
-
-                // Center the square on the cursor
-                target_pos.x -= 0.025f;
-                target_pos.y -= 0.025f;
-            }
-        }
-
-        current_pos.x += (target_pos.x - current_pos.x) * lerp_speed * dt;
-        current_pos.y += (target_pos.y - current_pos.y) * lerp_speed * dt;
-
-        glClearColor(
-          (float)renderer.clear_colour.r / 255.0f,
-          (float)renderer.clear_colour.g / 255.0f,
-          (float)renderer.clear_colour.b / 255.0f,
-          1.0f
+    app->game.palette.standard_shader = 0;
+    app->game.palette.effect_shader = app->gfx.load_shader(
+        &app->renderer,
+        "Data/shaders/background.vert",
+        "Data/shaders/background.frag"
         );
-        glClear(GL_COLOR_BUFFER_BIT);
+    app->game.palette.net_shader = app->gfx.load_shader(
+        &app->renderer,
+        "Data/shaders/net.vert",
+        "Data/shaders/net.frag"
+        );
 
-        renderer_SubmitRect(&renderer, current_pos.x, current_pos.y, 0.05f, 0.05f, {255, 255, 255, 255}); // Left Paddle
 
-        gfx.flush(&renderer);
-        SDL_GL_SwapWindow(window.window_handle);
-    }
+    Colour white = colour_from_rgb(255, 255, 255);
+    Colour grey = colour_from_rgb(125, 125, 125);
+    Colour bg_tint = colour_from_rgb(124, 24, 60);
+
+    app->game.palette.paddle_one_mat = renderer_CreateMaterial(&app->renderer, app->game.palette.standard_shader, white);
+    app->game.palette.paddle_two_mat = renderer_CreateMaterial(&app->renderer, app->game.palette.standard_shader, white);
+    app->game.palette.ball_mat       = renderer_CreateMaterial(&app->renderer, 1, white);
+    app->game.palette.background_mat = renderer_CreateMaterial(&app->renderer, app->game.palette.effect_shader, bg_tint);
+    app->game.palette.net_mat        = renderer_CreateMaterial(&app->renderer, app->game.palette.net_shader, grey);
+
+    float aspect = app->game.camera.aspect_ratio;
+    app->game.paddle[0] = { -aspect + 0.1f, -0.15f };
+    app->game.paddle[1] = {  aspect - 0.15f, -0.15f };
+    app->game.ball_position = { 0.0f, 0.0f };
+    app->game.ball_velocity = { 0.6f, 0.4f };
 }
 
 int main(int argc, char** argv)
 {
-
     Window window = {};
     if (!window_Create(&window))
     {
         fprintf(stderr, "Failed to create window\n");
+        return -1;
     }
 
-    Renderer renderer = {};
-    renderer.backend_type = RendererBackend::OPENGL;
-    renderer.clear_colour = {50, 50, 45, 255};
+    App app = {};
+    app.game = {};
 
-    RenderFunctions gfx = renderer_init(&renderer, &window);
+    app_Init(&app, &window);
+    setup_Game(&app, &window);
 
-    bool isRunning = true;
+    while (app.running)
+    {
+        app_Update(&app);
+        app_Draw(&app);
 
-    run(isRunning, window, renderer, gfx);
+        SDL_GL_SwapWindow(window.window_handle);
+        SDL_Delay(1);
+    }
 
+    app_Shutdown(&app);
     SDL_DestroyWindow(window.window_handle);
     SDL_Quit();
 }

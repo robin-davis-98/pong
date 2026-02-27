@@ -1,5 +1,5 @@
-#ifndef PONG_WINDOW_H
-#define PONG_WINDOW_H
+#ifndef PET_WINDOW_H
+#define PET_WINDOW_H
 #include <SDL3/SDL_video.h>
 
 struct WindowProperties
