@@ -21,7 +21,7 @@ bool window_Create(Window* window)
         "Pong",
         800,
         600,
-        SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL
+        SDL_WINDOW_OPENGL
         );
 
     if (!window->window_handle)

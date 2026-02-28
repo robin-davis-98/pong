@@ -85,17 +85,30 @@ endforeach()
 
 add_subdirectory(vendors)
 
-add_executable(pong
+if(WIN32)
+    add_executable(pong WIN32
         ${SOURCE_CODE_DIR}main.cpp
 
         ${COMMON_SOURCES}
         ${CORE_SOURCES}
 
         ${SHADER_HEADERS}
-)
+    )
+else()
+    add_executable(pong
+        ${SOURCE_CODE_DIR}main.cpp
+
+        ${COMMON_SOURCES}
+        ${CORE_SOURCES}
+
+        ${SHADER_HEADERS}
+    )
+endif()
 
 target_include_directories(pong
-    PUBLIC ${INCLUDE_CODE_DIR}
+    PUBLIC
+        ${INCLUDE_CODE_DIR}
+        ${VENDOR_CODE_DIR}
     PRIVATE
         ${SOURCE_CODE_DIR}
         ${GEN_DIR}

@@ -1,8 +1,10 @@
 #version 430 core
 
-layout (location = 0) in vec2 aPos; // Quad (0,0 to 1,1)
-layout (location = 1) in vec4 aRect;    // Command: x, y, w, h
+layout (location = 0) in vec2 aPos;
+layout (location = 1) in vec4 aRect;
 layout (location = 2) in uint aMaterialID;
+layout (location = 3) in vec4 aUV;
+layout (location = 4) in float aRotation;
 
 uniform mat4 uProjection;
 

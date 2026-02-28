@@ -1,9 +1,12 @@
 #include "app.h"
 
 #include <cstdio>
+#include <cstdlib> // For rand() and RAND_MAX
+#include <ctime>   // For time() to seed the RNG
 
 void app_Init(App* app, Window* window)
 {
+    srand((unsigned int)time(NULL));
     app->renderer = {};
     app->renderer.backend_type = RendererBackend::OPENGL;
     app->renderer.material_count = 0;
@@ -11,6 +14,7 @@ void app_Init(App* app, Window* window)
 
     app->last_time = SDL_GetTicks();
     app->running = true;
+
 }
 
 void app_Tick(App* app)
@@ -57,7 +61,9 @@ void app_Draw(App* app)
     //TODO: BACKGROUND TARGET MISSING
     app->gfx.set_render_target(&app->renderer, &app->renderer.background_target);
     */
-    renderer_SetCamera(&app->renderer, app->game.camera.projection);
+
+    Mat4 render_matrix = app->game.camera.projection;
+    renderer_SetCamera(&app->renderer, render_matrix);
 
     float bg_width = app->game.camera.aspect_ratio * 2.0f;
     renderer_SubmitRect(&app->renderer,
@@ -82,8 +88,66 @@ void app_Draw(App* app)
         0.045f, 0.2f,
         app->game.palette.paddle_two_mat);
 
+    char score_l[8];
+    char score_r[8];
+    snprintf(score_l, sizeof(score_l), "%d", app->game.score_player);
+    snprintf(score_r, sizeof(score_r), "%d", app->game.score_ai);
+
+    // ... inside app_Draw ...
+
+    float score_y = 0.7f;
+    float score_size = 0.25f;
+    float offset_from_center = 0.15f;
+
+    // 1. Check your renderer.cpp! What is cur_x adding?
+    // If your renderer.cpp uses `cur_x += size * 0.7f;`, this MUST be 0.7f.
+    // If your renderer.cpp uses `cur_x += size * 0.5f;`, change this to 0.5f.
+    float kerning_step = score_size * 0.7f;
+
+    // 2. Calculate the TRUE visual width of the string
+    int len = strlen(score_l);
+    float true_width_l = (len - 1) * kerning_step + score_size;
+
+    // 3. Anchor it perfectly
+    float x_l = -offset_from_center - true_width_l;
+
+    // Draw Left Score
+    renderer_SubmitText(&app->renderer, score_l, x_l, score_y, score_size, app->game.palette.font_mat);
+
+    // Draw Right Score
+    renderer_SubmitText(&app->renderer, score_r, offset_from_center, score_y, score_size, app->game.palette.font_mat);
+
+    if (app->game.ball_served && app->game.hit_count >= 2) {
+        int growth = (app->game.hit_count - 2) / 2 + 1;
+        int visible_segments = (growth < MAX_TRAIL_POINTS) ? growth : MAX_TRAIL_POINTS - 1;
+
+        for (int i = 0; i < visible_segments; i++) {
+            Vec2 p1 = app->game.ball_history[i];
+            Vec2 p2 = app->game.ball_history[i+1];
+
+            float dx = p2.x - p1.x;
+            float dy = p2.y - p1.y;
+            float dist = sqrtf(dx*dx + dy*dy);
+
+            // Skip tiny segments to avoid flickering
+            if (dist < 0.001f) continue;
+
+            float angle = atan2f(dy, dx);
+
+            // THICKNESS: Taper the whole ribbon
+            // i=0 is at the ball (thickest), i=visible_segments is the tip (thinnest)
+            float life_percent = (float)i / (float)visible_segments;
+            float thickness = 0.03f * (1.0f - life_percent);
+
+            renderer_SubmitRectRotated(&app->renderer,
+                p1.x, p1.y,
+                dist, thickness,
+                angle,
+                app->game.palette.trail_mat);
+        }
+    }
+
     // Draw Ball
-    //TODO: REPLACE WITH SUBMIT CIRCLE WHEN ADDED
     renderer_SubmitCircle(&app->renderer,
         app->game.ball_position.x, app->game.ball_position.y,
         0.02f,

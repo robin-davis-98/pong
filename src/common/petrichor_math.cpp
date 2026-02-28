@@ -92,3 +92,9 @@ Mat4 mat4_mul(Mat4 a, Mat4 b) {
     }
     return res;
 }
+
+void mat4_translate(Mat4* m, float x, float y, float z) {
+    m->m[12] += x;
+    m->m[13] += y;
+    m->m[14] += z;
+}

@@ -9,5 +9,6 @@ void gl_OnResize(Renderer* r, int width, int height);
 void gl_BeginFrame(Renderer* r);
 void gl_Shutdown(Renderer* r);
 uint32_t gl_LoadShader(Renderer* r, const char* vertexPath, const char* fragmentPath);
+uint32_t gl_LoadTexture(const char* path);
 
 #endif

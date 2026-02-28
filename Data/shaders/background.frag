@@ -10,7 +10,7 @@ struct Material {
     vec4 albedo;
     uint shader_id;
     uint texture_id;
-    uint _pad0;
+    float rotation;
     uint _pad1;
 };
 

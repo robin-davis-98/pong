@@ -3,12 +3,17 @@
 #include <glad/glad.h>
 #include <SDL3/SDL.h>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb/stb_image.h"
+
 #include "core/graphics/renderer/opengl/opengl_impl.h"
 
 #include "opengl_quad_frag.h"
 #include "opengl_quad_vert.h"
 #include "opengl_circle_frag.h"
 #include "opengl_circle_vert.h"
+#include "opengl_text_frag.h"
+#include "opengl_text_vert.h"
 
 static GLuint gl_CreateShaderProgram(const char* vertexSource, const char* fragmentSource)
 {
@@ -98,6 +103,34 @@ uint32_t gl_LoadShader(Renderer* r, const char* vertexPath, const char* fragment
     return id;
 }
 
+uint32_t gl_LoadTexture(const char* path) {
+    int width, height, channels;
+    // Force 4 channels (RGBA) for consistency
+    stbi_set_flip_vertically_on_load(true);
+    unsigned char* data = stbi_load(path, &width, &height, &channels, 4);
+
+
+    if (!data) {
+        fprintf(stderr, "Failed to load texture: %s\n", path);
+        return 0;
+    }
+
+    uint32_t tex_id;
+    glGenTextures(1, &tex_id);
+    glBindTexture(GL_TEXTURE_2D, tex_id);
+
+    // Pixel art settings: Use NEAREST to keep it crisp
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+
+    stbi_image_free(data);
+    return tex_id;
+}
+
 void gl_InitQuad(OpenGLData* gl)
 {
     float quad_vertices[] = {
@@ -126,26 +159,45 @@ void gl_InitCommandBuffer(OpenGLData* gl)
 {
     glBindVertexArray(gl->vao);
 
+    GLint stride = sizeof(RenderCommand);
+
     glGenBuffers(1, &gl->command_vbo);
     glBindBuffer(GL_ARRAY_BUFFER, gl->command_vbo);
-    glBufferData(GL_ARRAY_BUFFER, MAX_RENDER_COMMANDS * sizeof(RenderCommand), NULL, GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, MAX_RENDER_COMMANDS * stride, NULL, GL_DYNAMIC_DRAW);
 
+
+    // VERTEX POINTS
     glVertexAttribPointer(
         1, 4,
         GL_FLOAT, GL_FALSE,
-        sizeof(RenderCommand),
+        stride,
         (void*)offsetof(RenderCommand, as.rect)
         );
     glEnableVertexAttribArray(1);
     glVertexAttribDivisor(1, 1);
 
+    // MATERIAL UPLOAD
     glVertexAttribIPointer(
         2, 1,
-        GL_UNSIGNED_INT, sizeof(RenderCommand),
+        GL_UNSIGNED_INT, stride,
         (void*)offsetof(RenderCommand, material_id)
         );
     glEnableVertexAttribArray(2);
     glVertexAttribDivisor(2, 1);
+
+    // UVs
+    glEnableVertexAttribArray(3);
+    glVertexAttribPointer(3, 4,
+        GL_FLOAT, GL_FALSE, stride,
+        (void*) offsetof(RenderCommand, uv));
+    glVertexAttribDivisor(3, 1);
+
+    // ROTATION
+    glEnableVertexAttribArray(4);
+    glVertexAttribPointer(4, 1,
+        GL_FLOAT, GL_FALSE, stride,
+        (void*)offsetof(RenderCommand, rotation));
+    glVertexAttribDivisor(4, 1);
 
     glBindVertexArray(0);
 }
@@ -180,6 +232,7 @@ bool gl_CreateContext(Renderer* r, SDL_Window* window_handle)
 
     gl->shader_programs[0] = gl_CreateShaderProgram(opengl_quad_vert, opengl_quad_frag);
     gl->shader_programs[1] = gl_CreateShaderProgram(opengl_circle_vert, opengl_circle_frag);
+    gl->shader_programs[2] = gl_CreateShaderProgram(opengl_text_vert, opengl_text_frag);
 
     gl_InitQuad(gl);
     gl_InitCommandBuffer(gl);
@@ -192,6 +245,9 @@ void gl_Flush(struct Renderer* r)
 {
     if (r->command_count == 0) return;
     OpenGLData* gl = &r->backend_data.gl;
+
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     //UPLOAD MATERIALS
     glBindBuffer(GL_UNIFORM_BUFFER, gl->material_ubo);
@@ -231,6 +287,11 @@ void gl_Flush(struct Renderer* r)
         int time_loc = glGetUniformLocation(gl->shader_programs[shader_id], "uTime");
         if (time_loc != -1) {
             glUniform1f(time_loc, r->total_time);
+        }
+
+        if (r->commands[start].type == RenderCommandType::COMMAND_TEXT) {
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, r->materials[mat_id].texture_id);
         }
 
         uint32_t texture_handle = r->materials[mat_id].texture_id;

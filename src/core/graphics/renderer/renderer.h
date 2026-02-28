@@ -27,6 +27,7 @@ enum class RenderCommandType
     // The command type which
     COMMAND_RECT,
     COMMAND_CIRCLE,
+    COMMAND_TEXT,
 };
 
 struct RenderCommand
@@ -36,9 +37,13 @@ struct RenderCommand
         struct {float x, y, w, h; } rect;
     } as;
 
+    struct {
+        float x, y, w, h;
+    } uv;
+
     RenderCommandType type;
     uint32_t material_id;
-    uint32_t _pad[2];
+    float rotation;
 };
 
 struct RenderTarget
@@ -100,17 +105,22 @@ struct RenderFunctions
     void (*shutdown)(struct Renderer* r);
 
     uint32_t (*load_shader)(Renderer* r, const char* vertexPath, const char* fragmentPath);
+    uint32_t (*load_texture)(const char* path);
     void (*set_render_target)(Renderer* r, RenderTarget* target);
 };
 
 RenderFunctions renderer_init(Renderer* renderer, Window* window);
 
+//Camera functions
 void renderer_SetCamera(Renderer* r, Mat4 matrix);
 
-// Primitives
+// Primitives submit functions
 void renderer_SubmitRect(Renderer* r, float x, float y, float w, float h, uint32_t material_id);
+void renderer_SubmitRectRotated(Renderer* r, float x, float y, float w, float h, float rotation, uint32_t material_id);
+void renderer_SubmitRectUV(Renderer* r, float x, float y, float w, float h, float ux, float uy, float uw, float uh, uint32_t material_id);
 void renderer_SubmitCircle(Renderer* r, float x, float y, float radius, uint32_t material_id);
-
+void renderer_SubmitText(Renderer* r, const char* text, float x, float y, float size, uint32_t material_id);
+//Material functions
 uint32_t renderer_CreateMaterial(Renderer* r, uint32_t shader_id, Colour colour);
 void renderer_UpdateMaterial(Renderer* r, uint32_t material_id, Colour colour);
 

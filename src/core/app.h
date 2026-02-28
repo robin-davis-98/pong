@@ -6,6 +6,8 @@
 #include "core/graphics/renderer/renderer.h"
 #include "core/scene/camera/orthographic.h"
 
+#define MAX_TRAIL_POINTS 10
+
 struct Palette
 {
     uint32_t paddle_one_mat;
@@ -13,20 +15,30 @@ struct Palette
     uint32_t ball_mat;
     uint32_t background_mat;
     uint32_t net_mat;
-    uint32_t ui_mat;
+    uint32_t trail_mat;
+    uint32_t font_mat;
 
     uint32_t standard_shader;
     uint32_t effect_shader;
     uint32_t net_shader;
+    uint32_t trail_shader;
 };
 
 struct GameData
 {
     CameraOrthographic camera;
+    Palette palette;
     Vec2 paddle[2];
     Vec2 ball_position;
     Vec2 ball_velocity;
-    Palette palette;
+    bool ball_served;
+    Vec2 ball_history[MAX_TRAIL_POINTS];
+    float trail_scale;
+    float trail_timer;
+    int hit_count;
+
+    int score_player;
+    int score_ai;
 };
 
 struct App

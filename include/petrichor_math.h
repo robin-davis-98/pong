@@ -13,5 +13,6 @@ Mat4 mat4_orthographic(float left, float right, float bottom, float top, float n
 Mat4 mat4_perspective(float fov, float aspect, float near, float far);
 Mat4 mat4_lookat(Vec3 eye, Vec3 target, Vec3 up);
 Mat4 mat4_mul(Mat4 a, Mat4 b);
+void mat4_translate(Mat4* m, float x, float y, float z);
 
 #endif
